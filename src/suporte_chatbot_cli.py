@@ -9,6 +9,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain_google_genai import ChatGoogleGenerativeAI
+from tools_agent import build_tools_agent, get_tool_names
 
 
 # =========================
@@ -100,7 +101,10 @@ def build_llm() -> ChatGoogleGenerativeAI:
             "GOOGLE_API_KEY não encontrado. Defina no .env ou ambiente."
         )
 
-    return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key)
+    return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, streaming=False)
+
+
+# Ferramentas e agente foram extraídos para 'tools_agent.py'
 
 
 # =========================
@@ -155,9 +159,24 @@ def atender_usuario(
 # =========================
 def print_banner():
     print("=" * 72)
-    print("Assistente de Suporte — modo interativo")
-    print("Comandos: /sair para encerrar, /contexto para definir contexto")
+    print("Assistente de Suporte — modo interativo (suporte | ferramentas)")
+    print("Comandos: /sair, /contexto <txt>, /modo suporte, /modo ferramentas, /tools")
     print("=" * 72)
+
+
+def should_use_tools(text: str) -> bool:
+    t = text.lower()
+    keywords = [
+        "média",
+        "media",
+        "cria ticket",
+        "ticket",
+        "buscar",
+        "pesquisa",
+        "web",
+        "search",
+    ]
+    return any(k in t for k in keywords)
 
 
 def main():
@@ -171,8 +190,10 @@ def main():
     parser, format_instructions = make_parser()
     short_tpl, long_tpl = build_prompts()
     selector = make_selector(short_tpl, long_tpl)
+    tools_executor = build_tools_agent(llm)
 
     contexto_padrao = ""
+    modo = "suporte"  # suporte | ferramentas
     print_banner()
     print("Assistente preparado. Informe sua pergunta.")
 
@@ -196,28 +217,57 @@ def main():
             print(f"Contexto atualizado: '{contexto_padrao}'")
             continue
 
-        try:
-            resposta = atender_usuario(
-                llm=llm,
-                pergunta=pergunta,
-                contexto=contexto_padrao,
-                parser=parser,
-                format_instructions=format_instructions,
-                selector=selector,
-            )
+        if pergunta.lower() in {"/modo ferramentas", "/modo ferr", "/ferramentas"}:
+            modo = "ferramentas"
+            print("Modo alterado: ferramentas (tool_calling). Use /tools para listar.")
+            continue
 
-            print("\n— Resultado —")
-            print(f"Tipo: {resposta.tipo}")
-            print(f"Prioridade: {resposta.prioridade}")
-            print(f"Tags: {', '.join(resposta.tags)}")
-            print("Resposta:")
-            print(resposta.resposta)
-            print("Passos:")
-            for idx, passo in enumerate(resposta.passos, start=1):
-                print(f"  {idx}. {passo}")
+        if pergunta.lower() in {"/modo suporte", "/modo sup", "/suporte"}:
+            modo = "suporte"
+            print("Modo alterado: suporte estruturado.")
+            continue
+
+        if pergunta.lower() == "/tools":
+            print("Ferramentas disponíveis:")
+            try:
+                print(", ".join(get_tool_names()))
+            except Exception:
+                print("calcula_media, cria_ticket, web_search")
+            continue
+
+        try:
+            if modo == "suporte":
+                # Roteamento automático para ferramentas quando a pergunta sugere uso
+                if should_use_tools(pergunta):
+                    res = tools_executor.invoke({"input": pergunta})
+                    print("\n— Ferramentas —")
+                    print(res.get("output") or res)
+                    continue
+                resposta = atender_usuario(
+                    llm=llm,
+                    pergunta=pergunta,
+                    contexto=contexto_padrao,
+                    parser=parser,
+                    format_instructions=format_instructions,
+                    selector=selector,
+                )
+
+                print("\n— Resultado —")
+                print(f"Tipo: {resposta.tipo}")
+                print(f"Prioridade: {resposta.prioridade}")
+                print(f"Tags: {', '.join(resposta.tags)}")
+                print("Resposta:")
+                print(resposta.resposta)
+                print("Passos:")
+                for idx, passo in enumerate(resposta.passos, start=1):
+                    print(f"  {idx}. {passo}")
+            else:
+                res = tools_executor.invoke({"input": pergunta})
+                print("\n— Ferramentas —")
+                print(res.get("output") or res)
 
         except Exception as e:
-            print(f"Erro ao atender: {e}")
+            print(f"Erro: {e}")
 
 
 if __name__ == "__main__":
