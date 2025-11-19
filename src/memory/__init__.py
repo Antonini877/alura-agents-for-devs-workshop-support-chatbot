@@ -1,0 +1,1 @@
+"""Pacote de memória do agente."""

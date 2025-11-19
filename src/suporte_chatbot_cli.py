@@ -2,14 +2,15 @@ import os
 import sys
 from typing import List, Optional, Tuple
 
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain_google_genai import ChatGoogleGenerativeAI
-from tools_agent import build_tools_agent, get_tool_names
+from llm_factory import build_llm
+from tools_agent import get_tool_names
+from agents.support_agent import build_agent_with_memory
 
 
 # =========================
@@ -90,18 +91,7 @@ def make_selector(short_tpl: PromptTemplate, long_tpl: PromptTemplate) -> Runnab
 # =========================
 # LLM
 # =========================
-def build_llm() -> ChatGoogleGenerativeAI:
-    load_dotenv()
-
-    api_key = os.getenv("GOOGLE_API_KEY")
-    model_name = os.getenv("MODEL_NAME", "gemini-2.0-flash")
-
-    if not api_key:
-        raise RuntimeError(
-            "GOOGLE_API_KEY não encontrado. Defina no .env ou ambiente."
-        )
-
-    return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, streaming=False)
+# LLM é fornecido por llm_factory.build_llm()
 
 
 # Ferramentas e agente foram extraídos para 'tools_agent.py'
@@ -190,7 +180,7 @@ def main():
     parser, format_instructions = make_parser()
     short_tpl, long_tpl = build_prompts()
     selector = make_selector(short_tpl, long_tpl)
-    tools_executor = build_tools_agent(llm)
+    agent_with_memory = build_agent_with_memory(llm)
 
     contexto_padrao = ""
     modo = "suporte"  # suporte | ferramentas
@@ -239,8 +229,11 @@ def main():
             if modo == "suporte":
                 # Roteamento automático para ferramentas quando a pergunta sugere uso
                 if should_use_tools(pergunta):
-                    res = tools_executor.invoke({"input": pergunta})
-                    print("\n— Ferramentas —")
+                    res = agent_with_memory.invoke(
+                        {"input": pergunta},
+                        config={"configurable": {"session_id": "CLI"}},
+                    )
+                    print("\n— Ferramentas (com memória) —")
                     print(res.get("output") or res)
                     continue
                 resposta = atender_usuario(
@@ -262,8 +255,11 @@ def main():
                 for idx, passo in enumerate(resposta.passos, start=1):
                     print(f"  {idx}. {passo}")
             else:
-                res = tools_executor.invoke({"input": pergunta})
-                print("\n— Ferramentas —")
+                res = agent_with_memory.invoke(
+                    {"input": pergunta},
+                    config={"configurable": {"session_id": "CLI"}},
+                )
+                print("\n— Ferramentas (com memória) —")
                 print(res.get("output") or res)
 
         except Exception as e:
