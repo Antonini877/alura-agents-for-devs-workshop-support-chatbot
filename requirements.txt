@@ -8,3 +8,6 @@ jupyter==1.0.0
 ipykernel==6.29.0
 duckduckgo-search>=6.2.0
 sqlalchemy
+chromadb
+langchain-text-splitters
+rank-bm25
