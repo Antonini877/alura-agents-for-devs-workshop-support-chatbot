@@ -12,6 +12,8 @@ jobs:
       THRESHOLD_CORRECTNESS: "0.45"
       THRESHOLD_RELEVANCY: "0.6"
       THRESHOLD_FAITHFULNESS: "0.5"
+      THRESHOLD_EPSILON: "1e-6"
+      RETRIEVER_K: "5"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

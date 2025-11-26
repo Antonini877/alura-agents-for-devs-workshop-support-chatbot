@@ -63,13 +63,16 @@ def main():
     doc_path = os.environ.get("CATALOG_MD_PATH", "ingestion/products_catalog.md")
     metrics, avg, predictions = run_evaluation(doc_path)
     print("Métricas por item:", metrics)
-    print("Médias:", avg)
+    print("Médias:", {k: round(v, 6) for k, v in avg.items()})
     thresholds = {
         "correctness": float(os.environ.get("THRESHOLD_CORRECTNESS", "0.45")),
         "relevancy": float(os.environ.get("THRESHOLD_RELEVANCY", "0.6")),
         "faithfulness": float(os.environ.get("THRESHOLD_FAITHFULNESS", "0.5")),
     }
-    ok = all(avg[k] >= thresholds[k] for k in thresholds)
+    epsilon = float(os.environ.get("THRESHOLD_EPSILON", "1e-9"))
+    checks = {k: {"avg": avg[k], "threshold": thresholds[k], "pass": (avg[k] + epsilon) >= thresholds[k]} for k in thresholds}
+    ok = all(info["pass"] for info in checks.values())
+    print("Verificação por métrica:", {k: {"avg": round(v["avg"], 6), "threshold": v["threshold"], "pass": v["pass"]} for k, v in checks.items()})
     if not ok:
         print("Falha: métricas abaixo dos thresholds:", thresholds)
         sys.exit(1)

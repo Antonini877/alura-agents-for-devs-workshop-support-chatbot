@@ -23,7 +23,8 @@ def build_rag(doc_path: str, collection_name: str = "commercial-catalog"):
     docs = splitter.create_documents([raw_text])
     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
     vs = Chroma.from_documents(docs, embedding=embeddings, collection_name=collection_name)
-    retriever = vs.as_retriever(k=4)
+    k = int(os.environ.get("RETRIEVER_K", "4"))
+    retriever = vs.as_retriever(k=k)
 
     def format_docs(docs):
         return "\n\n".join(d.page_content for d in docs)

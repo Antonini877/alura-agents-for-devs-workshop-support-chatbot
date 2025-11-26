@@ -1,2 +1,1 @@
 rouge-score
-python-dotenv
