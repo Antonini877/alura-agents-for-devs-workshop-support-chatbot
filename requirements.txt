@@ -11,3 +11,8 @@ sqlalchemy
 chromadb
 langchain-text-splitters
 rank-bm25
+ragas
+datasets
+evaluate
+rouge-score
+langsmith

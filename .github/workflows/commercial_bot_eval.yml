@@ -1,0 +1,31 @@
+name: commercial-bot-eval
+
+on:
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      CATALOG_MD_PATH: ingestion/products_catalog.md
+      THRESHOLD_CORRECTNESS: "0.45"
+      THRESHOLD_RELEVANCY: "0.6"
+      THRESHOLD_FAITHFULNESS: "0.5"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r projetos/commercial_bot/requirements.txt
+
+      - name: Run evaluation
+        run: |
+          python projetos/commercial_bot/evaluate.py
