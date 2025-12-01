@@ -1,1 +1,4 @@
 rouge-score
+python-dotenv
+fastapi
+uvicorn[standard]

@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  commercial-bot-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CATALOG_MD_PATH: ${CATALOG_MD_PATH:-ingestion/products_catalog.md}
+      RETRIEVER_K: ${RETRIEVER_K:-5}
+    # Se quiser editar o catálogo local e refletir no container, descomente os volumes:
+    # volumes:
+    #   - ./ingestion:/app/ingestion:ro
+

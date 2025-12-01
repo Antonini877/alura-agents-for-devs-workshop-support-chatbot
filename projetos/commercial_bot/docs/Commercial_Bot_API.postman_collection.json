@@ -1,0 +1,110 @@
+{
+  "info": {
+    "name": "Commercial Catalog Bot API",
+    "_postman_id": "e1b9c5c8-3f57-4c8d-9e3f-collection-demo",
+    "description": "Coleção Postman para testar a API FastAPI do bot comercial (catálogo de produtos). Inclui health, chat (JSON) e streaming (SSE).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat (JSON)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"me fale todas as opções de produtos\",\n  \"doc\": \"{{doc}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/chat",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chat"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Chat Stream (SSE)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "text/event-stream"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/chat/stream?q={{question}}&doc={{doc}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "chat",
+            "stream"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{question}}"
+            },
+            {
+              "key": "doc",
+              "value": "{{doc}}"
+            }
+          ]
+        },
+        "description": "Endpoint de streaming via Server-Sent Events. Observação: Postman pode não renderizar streaming contínuo; em caso de necessidade, use curl: curl -N -H 'Accept: text/event-stream' \"{{baseUrl}}/chat/stream?q={{question}}\""
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "doc",
+      "value": "ingestion/products_catalog.md"
+    },
+    {
+      "key": "question",
+      "value": "me fale todas as opções de produtos"
+    }
+  ]
+}
+
