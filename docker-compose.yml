@@ -8,6 +8,15 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CATALOG_MD_PATH: ${CATALOG_MD_PATH:-ingestion/products_catalog.md}
       RETRIEVER_K: ${RETRIEVER_K:-5}
+      MODEL_NAME: ${MODEL_NAME:-gemini-2.0-flash}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_TLS: ${SMTP_TLS:-true}
     # Se quiser editar o catálogo local e refletir no container, descomente os volumes:
     # volumes:
     #   - ./ingestion:/app/ingestion:ro

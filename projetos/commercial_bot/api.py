@@ -12,6 +12,7 @@ from starlette.responses import Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 from .rag import build_rag
+from .email_tool import send_email
 
 
 load_dotenv()
@@ -52,6 +53,9 @@ ERRORS_TOTAL = Counter(
 LATENCY = Histogram(
     "commercial_request_latency_seconds", "Latência da requisição (s)", ["path", "method"]
 )
+EMAILS_SENT_TOTAL = Counter("commercial_emails_sent_total", "E-mails enviados")
+EMAILS_ERRORS_TOTAL = Counter("commercial_emails_errors_total", "Erros ao enviar e-mails")
+EMAIL_SEND_LATENCY = Histogram("commercial_email_send_latency_seconds", "Latência de envio de e-mail")
 
 
 # Inicializa RAG no startup com catálogo padrão
@@ -142,7 +146,22 @@ def chat(
         bootstrap(doc)
     docs_ctx = retriever.invoke(question)
     ctxs = [d.page_content for d in docs_ctx]
-    answer = chain.invoke(question)
+    res = chain.invoke(question)
+    # Compatibilidade: chain pode retornar str ou dict
+    if isinstance(res, dict):
+        answer = res.get("answer")
+        email_result = res.get("email")
+    else:
+        answer = res
+        email_result = None
+    # Atualiza métricas baseado no resultado retornado pela tool do agente
+    if isinstance(email_result, dict):
+        status = email_result.get("status")
+        if status == "sent":
+            EMAILS_SENT_TOTAL.inc()
+        elif status == "error":
+            EMAILS_ERRORS_TOTAL.inc()
+
     logger.info(
         "chat_answer",
         extra={
@@ -150,11 +169,12 @@ def chat(
                 "path": str(request.url.path),
                 "question_len": len(question),
                 "contexts": len(ctxs),
-                "answer_preview": str(answer)[:200],
+                "answer_preview": str(answer)[:200] if answer is not None else None,
+                "email": (email_result or {}).get("status") if email_result else None,
             }
         },
     )
-    return JSONResponse({"answer": answer, "contexts": ctxs})
+    return JSONResponse({"answer": answer, "contexts": ctxs, "email": email_result})
 
 
 @app.get("/chat/stream")
@@ -188,3 +208,6 @@ def chat_stream(request: Request, q: str = Query(..., description="Pergunta"), d
         "X-Request-ID": request_id,
     }
     return StreamingResponse(event_generator(), headers=headers)
+
+
+# Removido: endpoint dedicado de envio de e-mail; a lógica foi integrada ao /chat
